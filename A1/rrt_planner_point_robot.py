@@ -2,7 +2,6 @@ import time
 import random
 import drawSample
 import math
-import _tkinter
 import sys
 import imageToRects
 import utils
@@ -58,7 +57,7 @@ def genPoint():
         x = random.gauss(tx, sigmax_for_randgen)
         y = random.gauss(ty, sigmay_for_randgen)
     else:
-        print "Not yet implemented"
+        print("Not yet implemented")
         quit(1)
 
     bad = 1
@@ -73,7 +72,7 @@ def genPoint():
             x = random.gauss(tx, sigmax_for_randgen)
             y = random.gauss(ty, sigmay_for_randgen)
         else:
-            print "Not yet implemented"
+            print("Not yet implemented")
             quit(1)
         # range check for gaussian
         if x<0: bad = 1
@@ -146,7 +145,7 @@ def rrt_search(G, tx, ty, canvas):
         for o in obstacles:
             #if inRect(p,o,1):
             if lineHitsRect(vertices[v],p,o) or inRect(p,o,1):
-                print "TODO"
+                print("TODO")
                 #... reject
 
         k = pointToVertex( p )   # is the new vertex ID
@@ -156,7 +155,7 @@ def rrt_search(G, tx, ty, canvas):
             canvas.polyline(  [vertices[v], vertices[k] ]  )
 
         if pointPointDistance( p, [tx,ty] ) < SMALLSTEP:
-            print "Target achieved.", nsteps, "nodes in entire tree"
+            print("Target achieved.", nsteps, "nodes in entire tree")
             if visualize:
                 t = pointToVertex([tx, ty])  # is the new vertex ID
                 G[edges].append((k, t))
@@ -174,7 +173,7 @@ def rrt_search(G, tx, ty, canvas):
                     if k <= 1: break  # have we arrived?
                     nsteps = nsteps + 1  # count steps
                     totaldist = totaldist + pointPointDistance(vertices[k], oldp)  # sum lengths
-                print "Path length", totaldist, "using", nsteps, "nodes."
+                print("Path length", totaldist, "using", nsteps, "nodes.")
 
                 global prompt_before_next
                 if prompt_before_next:

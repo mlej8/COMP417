@@ -3,14 +3,13 @@
 # see canvasDraw_tags*.py for extensions with tags and animation
 #################################################################
 
-from Tkinter import *
-import _tkinter
+from tkinter import *
+from tkinter import messagebox
 from PIL import Image
 from PIL import ImageTk
 from PIL import ImageChops
 # import threading,
 import sys,os
-import thread
 trace = 0 
 MARK="marker"  # tag value for 'mark' item
 
@@ -28,8 +27,7 @@ class checkbox(Frame):
 
     def getValue(self, event=0):
         return self.var.get()
-        
-from tkMessageBox import askokcancel           # get canned std dialog
+
 class Quitter(Frame):                          # subclass our GUI
     def __init__(self, who, parent=None, quitLabel="Quit" ):           # constructor method
         Frame.__init__(self, parent)
@@ -39,7 +37,7 @@ class Quitter(Frame):                          # subclass our GUI
         self.who = who
 
     def quit(self):
-        ans = askokcancel('Confirmation', "Are you sure?")
+        ans = messagebox.askokcancel('Confirmation', "Are you sure?")
         if ans: 
             Frame.quit(self)
             self.who.canvas.quit()
@@ -73,7 +71,7 @@ class SelectRect:
 
         try:
             self.root = Tk()
-        except _tkinter.TclError:
+        except TclError:
             os.putenv("DISPLAY",":0.0")
             self.root = Tk()
         
@@ -302,7 +300,7 @@ class SelectRect:
         event.widget.delete('all')                        # use tag all
         
     def updateLoop(self):
-        print "Enter infinite loop updateLoop(). Use a/z"
+        print("Enter infinite loop updateLoop(). Use a/z")
         while 1:
             self.canvas.master.bind('<KeyPress-a>', self.zoomin)
             self.canvas.master.bind('<KeyPress-z>', self.zoomout)
@@ -327,7 +325,7 @@ class SelectRect:
 if __name__ == '__main__':
     import time
     cv = SelectRect(nrects=2,infoboxes=["Hello world"],keepcontrol=1)
-    print cv.getRect()
+    print(cv.getRect())
     # root.mainloop()
     #cv.canvas.master.bind('<KeyPress-a>', cv.zoomin)
     #cv.canvas.master.bind('<KeyPress-z>', cv.zoomout)

@@ -1,6 +1,5 @@
 import sys
-import PIL
-import PIL.Image
+from PIL import Image
 
 # binarize image.
 # map everything below 200 to zero
@@ -25,21 +24,20 @@ def imageToRects(imagename):
         we are in free space again.
     """
     obstacles = []
-    im = PIL.Image.open(imagename).convert("L")
+    im = Image.open(imagename).convert("L")
     XMAX = im.size[0]
     YMAX = im.size[1]
 
     im = im.point( remap )
     obdata = list( im.getdata() )
 
-    print "Converting image to obstacle map."
+    print("Converting image to obstacle map.")
     im = im.point( remap )
     # Convert an image into a set of rectangular obstacles
     y=0
     while y<YMAX:
        x=0
-       if y%25==0: print "%.1f"%(float(y)/YMAX*100),"%.....     \r",
-       sys.stdout.flush()
+       if y%25==0: print("%.1f"%(float(y)/YMAX*100),"%.....     \r", flush=True)
        while x<XMAX:
           # see if point already in some rectangle
           skip=0
@@ -83,7 +81,7 @@ def imageToRects(imagename):
               x = x+ok_dx
           x = x+1
        y = y+1
-    print "Converting image to obstacle map, done."
+    print("Converting image to obstacle map, done.")
     return ( im.size, obstacles )
 
 
@@ -91,4 +89,4 @@ if __name__ == '__main__':
     import sys
     s,rects = imageToRects(sys.argv[1])
     for r in rects:
-        print r
+        print(r)
