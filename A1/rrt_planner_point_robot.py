@@ -85,7 +85,7 @@ def returnParent(k, canvas):
     """ Return parent note for input node k. """
     for e in G[edges]:
         if e[1]==k:
-            canvas.polyline(  [vertices[e[0]], vertices[e[1]] ], style=3  )
+            canvas.polyline([vertices[e[0]], vertices[e[1]]], style=3)
             return e[0]
 
 def genvertex():

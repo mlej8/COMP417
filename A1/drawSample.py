@@ -257,7 +257,7 @@ class SelectRect:
              x = (i[0]-self.xmin)*self.xscale
              y = (i[1]-self.ymin)*self.yscale
              ip = ip + [ x, y ]
-         ip = map(int,ip)
+         ip = [int(_) for _ in ip]
          if style==0: self.canvas.create_line(ip,fill='red', width=1, tags=tags)
          elif style==1: self.canvas.create_line(ip, fill='green', width=2, tags=tags)
          elif style==2: self.canvas.create_line(ip,fill='blue', width=2, tags=tags)
