@@ -19,7 +19,6 @@ map_size,obstacles = imageToRects.imageToRects(args.world)
 XMAX = map_size[0]
 YMAX = map_size[1]
 
-G = [  [ 0 ]  , [] ]   # nodes, edges
 vertices = [ [args.start_pos_x, args.start_pos_y], [args.start_pos_x, args.start_pos_y + 10]]
 
 # goal/target
@@ -32,7 +31,7 @@ sigmay_for_randgen = YMAX/2.0
 nodes=0
 edges=1
 
-def redraw(canvas):
+def redraw(canvas, G):
     canvas.clear()
     canvas.markit( tx, ty, r=SMALLSTEP )
     drawGraph(G, canvas)
@@ -81,11 +80,11 @@ def genPoint():
         if y>YMAX: bad = 1
     return [x,y]
 
-def returnParent(k, canvas):
+def returnParent(k, canvas, G):
     """ Return parent note for input node k. """
     for e in G[edges]:
         if e[1]==k:
-            canvas.polyline(  [vertices[e[0]], vertices[e[1]] ], style=3  )
+            canvas.polyline([vertices[e[0]], vertices[e[1]]], style=3)
             return e[0]
 
 def genvertex():
@@ -168,7 +167,7 @@ def rrt_search(G, tx, ty, canvas):
                 totaldist = 0
                 while 1:
                     oldp = vertices[k]  # remember point to compute distance
-                    k = returnParent(k, canvas)  # follow links back to root.
+                    k = returnParent(k, canvas, G)  # follow links back to root.
                     canvas.events()
                     if k <= 1: break  # have we arrived?
                     nsteps = nsteps + 1  # count steps
@@ -196,9 +195,9 @@ def main():
         for o in obstacles: canvas.showRect(o, outline='red', fill='blue')
     while 1:
         # graph G
-        G = [  [ 0 ]  , [] ]   # nodes, edges
-        redraw(canvas)
-        G[edges].append( (0,1) )
+        G = [[0],[]]   # nodes, edges
+        redraw(canvas, G)
+        G[edges].append((0,1))
         G[nodes].append(1)
         if visualize: canvas.markit( tx, ty, r=SMALLSTEP )
 
