@@ -176,7 +176,10 @@ def point_within_range(point, p1, p2):
 
 def inRect(p, rect, dilation):
     """ Return 1 in p is inside rect, dilated by dilation (for edge cases). """
-    return rect[0] <= p[0] <= rect[2] and rect[1] <= p[1] <= rect[-1]
+    return (
+        rect[0] - dilation <= p[0] <= rect[2] + dilation
+        and rect[1] - dilation <= p[1] <= rect[-1] + dilation
+    )
 
 
 def steer(closest_point, x_rand):
