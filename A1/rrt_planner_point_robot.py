@@ -5,6 +5,7 @@ import math
 import sys
 import imageToRects
 import utils
+import os
 
 # display = drawSample.SelectRect(imfile=im2Small,keepcontrol=0,quitLabel="")
 args = utils.get_args()
@@ -128,15 +129,16 @@ def pointPointDistance(p1, p2):
 
 def closestPointToPoint(G, p2):
     """ Return index of closest vertex on the graph to generated point """
-    distances = []
+    shortest_distance = float("inf")
+    index = -1
     for i, v in enumerate(G[nodes]):
-        distances.append((i, pointPointDistance(vertices[v], p2)))
-
-    # sorting according to distance
-    distances.sort(key=lambda x: x[1])
+        distance = pointPointDistance(vertices[v], p2)
+        if distance < shortest_distance:
+            index = i
+            shortest_distance = distance
 
     # return index of the closest vertex on the graph
-    return distances[0][0]
+    return index
 
 
 def lineHitsRect(p1, p2, r):
@@ -246,6 +248,7 @@ def rrt_search(G, tx, ty, canvas):
                 # while 1:
                 #     # backtrace and show the solution ...
                 #     canvas.events()
+                rrt_nsteps = nsteps
                 nsteps = 0
                 totaldist = 0
                 while 1:
@@ -268,6 +271,9 @@ def rrt_search(G, tx, ty, canvas):
 
                 im = ImageGrab.grab(bbox=(x0,y0,x1,y1))
                 im.save(os.path.join("graph",f'stepsize-{args.step_size}-seed-{args.seed}.png'))
+                # writing stats
+                with open("point_robot_logs", "a") as f:
+                    f.write(f"{args.seed},{args.step_size},{rrt_nsteps},{totaldist},{nsteps},{len(vertices)}\n")
                 exit(0)
 
 def main():

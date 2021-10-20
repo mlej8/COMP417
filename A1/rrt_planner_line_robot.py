@@ -112,15 +112,16 @@ def pointPointDistance(p1,p2):
 
 def closestPointToPoint(G,p2):
     """ Return index of closest vertex on the graph to generated point """
-    distances = []
+    shortest_distance = float("inf")
+    index = -1
     for i, v in enumerate(G[nodes]):
-        distances.append((i, pointPointDistance(vertices[v], p2)))
-
-    # sorting according to distance
-    distances.sort(key=lambda x: x[1])
+        distance = pointPointDistance(vertices[v], p2)
+        if distance < shortest_distance:
+            index = i
+            shortest_distance = distance
 
     # return index of the closest vertex on the graph
-    return distances[0][0]
+    return index
 
 def lineHitsRect(p1,p2,r):
     # segment slope
