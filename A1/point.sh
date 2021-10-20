@@ -1,6 +1,6 @@
 #! /bin/bash
 
-for step_size in 2 4 6 8 10 12 14 16 18 20
+for step_size in 5 8 11 14 17 20 23 26 29 32
 do
     echo "Step_size $step_size"
 for i in `seq 1 10`
