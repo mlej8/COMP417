@@ -193,13 +193,11 @@ def steer(closest_point, x_rand):
 
 
 def rrt_search(G, tx, ty, canvas):
-    # TODO
-    # Fill this function as needed to work ...
-
     global sigmax_for_randgen, sigmay_for_randgen
     n = 0
     nsteps = 0
     while 1:
+        nsteps += 1
         # 1. sample random point in free space
         p = genPoint()
 
@@ -238,7 +236,8 @@ def rrt_search(G, tx, ty, canvas):
             canvas.polyline([vertices[v], vertices[k]])
 
         if pointPointDistance(p, [tx, ty]) < SMALLSTEP:
-            print("Target achieved.", nsteps, "nodes in entire tree")
+            print("Target achieved.", len(vertices), "nodes in entire tree")
+            print(f"RRT has ran for {nsteps} steps.")
             if visualize:
                 t = pointToVertex([tx, ty])  # is the new vertex ID
                 G[edges].append((k, t))
@@ -260,23 +259,16 @@ def rrt_search(G, tx, ty, canvas):
                         vertices[k], oldp
                     )  # sum lengths
                 print("Path length", totaldist, "using", nsteps, "nodes.")
+                # save canvas
+                import pyscreenshot as ImageGrab
+                x0 = canvas.canvas.winfo_rootx()
+                y0 = canvas.canvas.winfo_rooty()
+                x1 = x0 + canvas.canvas.winfo_width()
+                y1 = y0 + canvas.canvas.winfo_height()
 
-                global prompt_before_next
-                if prompt_before_next:
-                    canvas.events()
-                    print
-                    "More [c,q,g,Y]>",
-                    d = sys.stdin.readline().strip().lstrip()
-                    print
-                    "[" + d + "]"
-                    if d == "c":
-                        canvas.delete()
-                    if d == "q":
-                        return
-                    if d == "g":
-                        prompt_before_next = 0
-                break
-
+                im = ImageGrab.grab(bbox=(x0,y0,x1,y1))
+                im.save(os.path.join("graph",f'stepsize-{args.step_size}-seed-{args.seed}.png'))
+                exit(0)
 
 def main():
     # seed
