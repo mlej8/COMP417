@@ -7,53 +7,21 @@ df = pd.read_csv(filename, names=columns)
 a = df.groupby("step_size")
 
 labels = df.step_size.unique()
-men_means = [20, 34, 30, 35, 27]
-women_means = [25, 32, 34, 20, 25]
 
-num_rrt_iterations = []
-for unique_seed in df.seed.unique():
-    num_rrt_iterations.append(df.loc[df.seed == unique_seed].rrt_nsteps.tolist())
-
-rrt_path_length = []
-for unique_seed in df.seed.unique():
-    rrt_path_length.append(df.loc[df.seed == unique_seed].totaldist.tolist())
-
-rrt_iterations = []
+rrt_iterations_data = []
+rrt_path_lengths = []
 for unique_step_size in df.step_size.unique():
-    bystepsize = [str(unique_step_size)]
-    rrt_steps = (df.loc[df.step_size == unique_step_size].rrt_nsteps.tolist())
-    for step in rrt_steps:
-        bystepsize.append(step)
-    rrt_iterations.append(bystepsize)
+    # bystepsize = [str(unique_step_size)]
+    df_step_size = df.loc[df.step_size == unique_step_size]
+    rrt_iterations_data.append([unique_step_size] + (df_step_size.rrt_nsteps.tolist()))
+    rrt_path_lengths.append([unique_step_size] + (df_step_size.totaldist.tolist()))
 
-columns = ["step_size"]
-for unique_seed in df.seed.unique():
-    columns.append(str(unique_seed))
-new_df = pd.DataFrame(rrt_iterations, columns=columns)
-new_df.plot(x="step_size", kind="bar", stacked=False)
-# x = np.arange(len(labels))  # the label locations
-# width = 0.05  # the width of the bars
+columns = ["step_size", *[f"trial_{i}" for i in df.seed.unique()]]
+rrt_niterations_df = pd.DataFrame(rrt_iterations_data, columns=columns)
+path_lengths_df = pd.DataFrame(rrt_path_lengths, columns=columns)
 
-# fig, ax = plt.subplots()
-# bars =[]
-# for i, rrt_it in enumerate(num_rrt_iterations, 1):
-#     bars.append(ax.bar(x + (width/len(num_rrt_iterations)) * (i-1), rrt_it, width, label=f'{i}'))
+rrt_niterations_plot = rrt_niterations_df.plot(title="Num of RRT iterations vs step size", x="step_size", rot=0, kind="bar", stacked=False, legend=True, xlabel="Step Size", ylabel="Number of RRT iterations")
+rrt_niterations_plot.figure.savefig("rrt_niterations_plot.png")
 
-# for bar in bars:
-#     ax.bar_label(bar, padding=3)
-# # rects1 = ax.bar(x - width/2, men_means, width, label='Men')
-# # rects2 = ax.bar(x + width/2, women_means, width, label='Women')
-
-# # # Add some text for labels, title and custom x-axis tick labels, etc.
-# # ax.set_ylabel('Scores')
-# # ax.set_title('Scores by group and gender')
-# ax.set_xticks(x)
-# ax.set_xticklabels(labels)
-# # ax.legend()
-
-
-# # ax.bar_label(rects2, padding=3)
-
-# fig.tight_layout()
-
-# plt.show()
+path_lengths_plot = path_lengths_df.plot(title="Path length vs step size",x="step_size", rot=0, kind="bar", stacked=False, legend=True, figsize=(24,16), xlabel="Step Size", ylabel="RRT path length") 
+path_lengths_plot.figure.savefig("path_lengths.png")
