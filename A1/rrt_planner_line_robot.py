@@ -236,6 +236,7 @@ def rrt_search(G, tx, ty, canvas):
                 # while 1:
                 #     # backtrace and show the solution ...
                 #     canvas.events()
+                rrt_nsteps = nsteps
                 nsteps = 0
                 totaldist = 0
                 while 1:
@@ -246,19 +247,20 @@ def rrt_search(G, tx, ty, canvas):
                     nsteps = nsteps + 1  # count steps
                     totaldist = totaldist + pointPointDistance(vertices[k], oldp)  # sum lengths
                 print("Path length", totaldist, "using", nsteps, "nodes.")
+                
+                # save canvas
+                import pyscreenshot as ImageGrab
+                x0 = canvas.canvas.winfo_rootx()
+                y0 = canvas.canvas.winfo_rooty()
+                x1 = x0 + canvas.canvas.winfo_width()
+                y1 = y0 + canvas.canvas.winfo_height()
 
-                global prompt_before_next
-                if prompt_before_next:
-                    canvas.events()
-                    print
-                    "More [c,q,g,Y]>",
-                    d = sys.stdin.readline().strip().lstrip()
-                    print
-                    "[" + d + "]"
-                    if d == "c": canvas.delete()
-                    if d == "q": return
-                    if d == "g": prompt_before_next = 0
-                break
+                im = ImageGrab.grab(bbox=(x0,y0,x1,y1))
+                im.save(os.path.join("graph", "line",f'robot_length-{args.robot_length}-seed-{args.seed}.png'))
+                # writing stats
+                with open("point_robot_logs", "a") as f:
+                    f.write(f"{args.seed},{args.step_size},{rrt_nsteps},{args.robot_length},{totaldist},{nsteps},{len(vertices)}\n")
+                exit(0)
 
 def main():
     #seed
