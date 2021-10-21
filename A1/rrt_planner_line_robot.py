@@ -168,13 +168,16 @@ def inRect(p,rect,dilation):
     )
 
 def steer(closest_point, x_rand):
-    dx = x_rand[0] - closest_point[0]
-    dy = x_rand[1] - closest_point[1]
-    theta = math.atan2(dy, dx)
+    if pointPointDistance(closest_point, x_rand) > SMALLSTEP:
+        dx = x_rand[0] - closest_point[0]
+        dy = x_rand[1] - closest_point[1]
+        theta = math.atan2(dy, dx)
 
-    y = math.sin(theta) * args.step_size
-    x = math.cos(theta) * args.step_size
-    return [closest_point[0] + x, closest_point[1] + y]
+        y = math.sin(theta) * args.step_size
+        x = math.cos(theta) * args.step_size
+        return [closest_point[0] + x, closest_point[1] + y]
+    else: 
+        return x_rand
 
 def rrt_search(G, tx, ty, canvas):
     #TODO
