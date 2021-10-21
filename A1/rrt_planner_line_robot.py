@@ -5,6 +5,7 @@ import math
 import sys
 import imageToRects
 import utils
+import os
 
 #display = drawSample.SelectRect(imfile=im2Small,keepcontrol=0,quitLabel="")
 args = utils.get_args()
@@ -254,11 +255,11 @@ def rrt_search(G, tx, ty, canvas):
                 y0 = canvas.canvas.winfo_rooty()
                 x1 = x0 + canvas.canvas.winfo_width()
                 y1 = y0 + canvas.canvas.winfo_height()
-
+                os.makedirs(os.path.join("graph", "line"), exist_ok=True)
                 im = ImageGrab.grab(bbox=(x0,y0,x1,y1))
                 im.save(os.path.join("graph", "line",f'robot_length-{args.robot_length}-seed-{args.seed}.png'))
                 # writing stats
-                with open("point_robot_logs", "a") as f:
+                with open("line_robot_logs", "a") as f:
                     f.write(f"{args.seed},{args.step_size},{rrt_nsteps},{args.robot_length},{totaldist},{nsteps},{len(vertices)}\n")
                 exit(0)
 
