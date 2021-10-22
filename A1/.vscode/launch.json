@@ -21,6 +21,23 @@
                 "--rrt_sampling_policy",
                 "gaussian"
             ],
+            "name": "Python: Line Robot",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "args": [
+                "--start_pos_x",
+                "10",
+                "--start_pos_y",
+                "270",
+                "--target_pos_x",
+                "900",
+                "--target_pos_y",
+                "30",
+                "--rrt_sampling_policy",
+                "gaussian",
+                "--robot_length","50"
+            ],
             "console": "integratedTerminal"
         }
     ]
