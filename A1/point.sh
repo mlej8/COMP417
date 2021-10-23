@@ -1,5 +1,8 @@
 #! /bin/bash
 
+
+rm -f point_robot_logs
+rm -f point.log
 for step_size in 5 8 11 14 17 20 23 26 29 32
 do
     echo "Step_size $step_size"

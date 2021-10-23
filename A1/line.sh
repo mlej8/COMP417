@@ -1,5 +1,7 @@
 #! /bin/bash
 
+rm -f line_robot_logs
+rm -f line.log
 for robot_length in 5 10 15 20 25 30 35 40 45 50
 do
     echo "Robot length $robot_length"

@@ -273,7 +273,9 @@ def rrt_search(G, tx, ty, canvas):
                 y1 = y0 + canvas.canvas.winfo_height()
 
                 im = ImageGrab.grab(bbox=(x0,y0,x1,y1))
-                im.save(os.path.join("graph",f'stepsize-{args.step_size}-seed-{args.seed}.png'))
+                img_folder = os.path.join("graph", "point")
+                os.makedirs(img_folder, exist_ok=True)
+                im.save(os.path.join(img_folder,f'stepsize-{args.step_size}-seed-{args.seed}.png'))
                 # writing stats
                 with open("point_robot_logs", "a") as f:
                     f.write(f"{args.seed},{args.step_size},{rrt_nsteps},{totaldist},{nsteps},{len(vertices)}\n")
