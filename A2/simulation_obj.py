@@ -86,7 +86,7 @@ class Ball:
 
         # load the images
         temp_image_paths = {}
-        with open(os.path.join(self.images_dir, self.csv_file), 'rb') as csvfile:
+        with open(os.path.join(self.images_dir, self.csv_file), 'rt', encoding="utf-8") as csvfile:
             image_reader = csv.reader(csvfile, delimiter=',', quotechar='|')
             for row in image_reader:
                 temp_image_paths[int(row[0])] = row[1]

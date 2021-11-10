@@ -101,7 +101,7 @@ class PID_controller:
         contours = cnts[1]
         center = (-1, -1)
         # only proceed if at least one contour was found
-        if len(contours) > 0:
+        if len(contours) > 0 and contours.min() >= 0:
             # find the largest contour in the mask, then use
             # it to compute the minimum enclosing circle and
             # centroid
@@ -198,7 +198,7 @@ if __name__ == '__main__':
 
         print('vs - Validation Save Video Mode')
 
-        inputString = raw_input("Select Job To Run: ")
+        inputString = input("Select Job To Run: ")
         # inputString = "v 0.5"
         # inputString = "e"
         commands = inputString.split(";")
@@ -239,5 +239,5 @@ if __name__ == '__main__':
                     process.join()
                 # while True:
                 #     pass
-                print "Exiting Main Thread"
+                print("Exiting Main Thread")
 
