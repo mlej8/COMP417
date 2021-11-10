@@ -100,7 +100,7 @@ class PID_controller:
         contours = cnts[1]
         center = (-1, -1)
         # only proceed if at least one contour was found
-        if len(contours) > 0 and contours.min() >= 0:
+        if contours is not None and len(contours) > 0 and contours.min() >= 0:
             # find the largest contour in the mask, then use
             # it to compute the minimum enclosing circle and
             # centroid
@@ -149,7 +149,7 @@ class PID_controller:
             #TODO
             # implement the PID controller function and compute FAN rpm to reach the target position.
             # fan_rpm = self.kp * error - self.kd * diff_error - self.ki * sum_error
-            fan_rpm = 100
+            fan_rpm = 1800
             
         self.last_t = t
         self.last_pos = pos
