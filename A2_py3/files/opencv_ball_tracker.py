@@ -30,20 +30,10 @@ class PID_controller:
         ###EVERYTHING HERE MUST BE INCLUDED###
         self.target_pos = target_pos
 
-        self.Kp = 0.0
-        self.Ki = 0.0
-        self.Kd = 0.0
+        self.Kp = 5000
+        self.Ki = 1.0
+        self.Kd = 5
         self.bias = 0.0
-        #
-        self.Kp = 6000
-        self.Ki = 500
-        self.Kd = 500
-        self.bias = 0.0
-
-        # self.Kp = 10000
-        # self.Ki = 5000
-        # self.Kd = 1000
-        # self.bias = 0.0
 
         self.detected_pos = 0.0
         self.rpm_output = 0.0
@@ -112,7 +102,7 @@ class PID_controller:
                 if radius <= 2:
                     return -1, -1
         except e:
-            #no contour found ...
+            print("no contour found ...")
             center = (-1, -1)
             pass
         return center[0], center[1]  # x, y , radius
@@ -143,16 +133,29 @@ class PID_controller:
         d_error = 0.0
         i_error = 0.0
 
-        target_pos = self.target_pos
         target_vel = 0.0
-        self.error_pos = target_pos - pos
+        self.error_pos = self.target_pos - pos
         error_vel = 0.0
         # print('detected at: {}, {}'.format(x, y))
         t = time.time()
         fan_rpm = 0
         if self.last_t is not None:
-            #TODO CHANGE THE CODE HERE
-            fan_rpm = 1 #DUMMY VALUE
+            # TODO
+            # implement the PID controller function and compute FAN rpm to reach the target position.
+            # accumulate errors for the integral
+            self.acc_pos_error += self.error_pos
+            
+            # compute the difference in position between current frame and last frame
+            error_diff = self.error_pos - self.last_error_pos
+
+            # if error_pos is negative, it means that we have to turn the fan on more
+            # if error_pos is positive, it means that we have to turn the fan on less
+            fan_rpm = self.Kp * self.error_pos - self.Kd * error_diff + self.Ki * self.acc_pos_error 
+            print("Pos: {}", self.detected_pos)
+            print("Fan RPM: {} \tError: {}\tP: {}\tD: {}\tI: {}".format(fan_rpm, self.error_pos, self.Kp * self.error_pos, -self.Kd * error_diff, self.Ki * self.acc_pos_error))
+            # TODO consider using self.prev_fan_rpm + fan_rpm ?
+            # TODO figure out what to do with the bias ?
+            # fan_rpm =+ self.bias
 
         self.last_t = t
         self.last_pos = pos
