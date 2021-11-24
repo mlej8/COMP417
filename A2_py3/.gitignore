@@ -1,2 +1,5 @@
 # ignore test images
 test/
+
+# ignore run outputs
+output/
