@@ -48,6 +48,7 @@ class PID_controller:
         self.acc_pos_error = 0.0
 
         self.last_t = None
+        self.last_fan_rpm = 0
 
         self.min = 1000000
         self.max = 0
@@ -81,12 +82,12 @@ class PID_controller:
 
         # mean filter
         kernel = np.ones((KERNEL_SIZE,KERNEL_SIZE), np.float32) / KERNEL_SIZE**2 # float for more precision on the image normalized by 25
-        
+
         # crop the image to only consider the ball column since it is static
-        frame = frame[:500, 140:180] 
+        frame = frame[:505, 135:190] 
 
         # applying filter multiple times
-        FILTER_TIMES = 5
+        FILTER_TIMES = 8
         for _ in range(FILTER_TIMES):
             frame = cv2.filter2D(frame, -1, kernel)
 
@@ -103,14 +104,7 @@ class PID_controller:
         x, y, radius = -1, -1, -1
         hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-        # get it brighter TODO delete
-        # cv2.imwrite(f"test/hsv_frame_{KERNEL_SIZE}.jpg", hsv_frame)
-        # hsv_frame[:,:,2] *= 8
-        # cv2.imwrite(f"test/hsv_frame_{KERNEL_SIZE}_bright.jpg", hsv_frame)
-        # hsv_frame[:,:,1] *= 4
-        # cv2.imwrite(f"test/hsv_frame_{KERNEL_SIZE}_sat.jpg", hsv_frame)
-
-        # construct a mask for the color "red", then perform
+        # construct a mask for the color "green", then perform
         # a series of dilations and erosions to remove any small
         # blobs left in the mask
         mask = cv2.inRange(hsv_frame, HSV_lower, HSV_upper)
@@ -132,7 +126,7 @@ class PID_controller:
                 M = cv2.moments(mask)
                 center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
                 #Ball is lost(went above the camera's line of sight)
-                if radius <= 2:
+                if radius <= 6:
                     return -1, -1
         except Exception as e:
             print("no contour found ...")
@@ -156,7 +150,7 @@ class PID_controller:
             # range is: 165 - 478, or 600-y is: 122 - 435
             # target is 121
             range = 485 - 0
-            pos = (float(485 - y)) / (485 - 0)  # scaled position
+            pos = (float(485 - y)) / range  # scaled position
             if y == -1:
                 # if ball is not found -> return 0 fan_rpm
                 return 0
@@ -191,19 +185,22 @@ class PID_controller:
             if (t - self.last_t) > 0:
                 error_diff = (self.error_pos - self.last_error_pos) / (t - self.last_t)
 
+            error_diff_threshold = 2000
+            if error_diff * self.Kd > error_diff_threshold:
+                print("capped")
+                error_diff = error_diff_threshold  / self.Kd
+
             # if error_pos is negative, it means that we have to turn the fan on more
             # if error_pos is positive, it means that we have to turn the fan on less
             fan_rpm = self.Kp * self.error_pos + self.Kd * error_diff + self.Ki * self.acc_pos_error 
             print("Pos: {}", self.detected_pos)
             print("Fan RPM: {} \tError: {}\tP: {}\tD: {}\tI: {}".format(fan_rpm, self.error_pos, self.Kp * self.error_pos, self.Kd * error_diff, self.Ki * self.acc_pos_error))
-            if fan_rpm > 5000:
-                print("error")
 
         self.last_t = t
         self.last_pos = pos
         self.last_error_pos = self.error_pos
-        if self.last_error_pos < -1:
-            print("error")
+        self.last_fan_rpm = fan_rpm
+        
         # print('p_e: {:10.4f}, d_e: {:10.4f}, i_e: {:10.4f}, output: {:10.4f}'.format(p_error, d_error, i_error, output))
         return fan_rpm
 
@@ -248,7 +245,8 @@ if __name__ == '__main__':
         print('vs - Validation Save Video Mode')
         print('quit - Exit')
 
-        inputString = input("Select Job To Run: ")
+        # inputString = input("Select Job To Run: ")
+        inputString = "vn"
         # inputString = "v 0.5"
         # inputString = "e"
         commands = inputString.split(";")
