@@ -28,12 +28,7 @@ import time
 from PID_variables import *
 
 class PID_controller:
-    def __init__(self, target_pos = -0.1):
-        # rescale image
-        def rescale(pixel_value, a, b, img_min, img_max):
-            return (((b-a) * (pixel_value - img_min)) / (img_max - img_min)) + a
-        self.rescale = np.vectorize(rescale)
-        
+    def __init__(self, target_pos = -0.1):      
         ###EVERYTHING HERE MUST BE INCLUDED###
         self.target_pos = target_pos
 
@@ -72,51 +67,45 @@ class PID_controller:
 
     def detect_ball(self, frame):
         #TODO
-        #You are given a basic opencv ball tracker. However, this won't work well for the noisy case.
-        #Play around to get it working.
+        # You are given a basic opencv ball tracker. However, this won't work well for the noisy case.
+        # Play around to get it working.
 
-        # bgr_color = 30, 0, 180
-        # bgr_color = 10, 0, 190
         bgr_color = 10, 0, 190
-        # TODO if ball out of frame, just return that its position is 1 .. (max)
-        # denoising (gaussian, median, non-local)
         """ 
         Kernel is normalized by KERNEL_SIZE^2. 
         This makes all elements in the matrix sum up to 1.
         We don't want to change the energy of the original image, and by multiplying the image by 1, we are not changing the total energy contained in the image. 
         """
         KERNEL_SIZE = 7
-        kernel = np.ones((KERNEL_SIZE,KERNEL_SIZE), np.float32) / KERNEL_SIZE**2 # float for more precision on the image normalized by 25
-        frame = frame[:500, 140:180] # crop the image to only consider the ball column
 
-        for _ in range(5):
+        # mean filter
+        kernel = np.ones((KERNEL_SIZE,KERNEL_SIZE), np.float32) / KERNEL_SIZE**2 # float for more precision on the image normalized by 25
+        
+        # crop the image to only consider the ball column since it is static
+        frame = frame[:500, 140:180] 
+
+        # applying filter multiple times
+        FILTER_TIMES = 5
+        for _ in range(FILTER_TIMES):
             frame = cv2.filter2D(frame, -1, kernel)
 
         # rescale between [0, 255]
         frame = ((frame - frame.min()) / (frame.max() - frame.min())) * (255 - 0) + 0
         frame = frame.astype("uint8")
-        cv2.imwrite(f"test/rescaled_img_{KERNEL_SIZE}.jpg", frame)
 
         thresh = 90
         hsv_color = cv2.cvtColor(np.uint8([[bgr_color]]), cv2.COLOR_BGR2HSV)[0][0]
         HSV_lower = np.array([hsv_color[0] - thresh, hsv_color[1] - thresh, hsv_color[2] - thresh])
         HSV_upper = np.array([hsv_color[0] + thresh, hsv_color[1] + thresh, hsv_color[2] + thresh])
 
-        # # TODO delete
-        # HSV_lower = (0,200,20)
-        # HSV_upper = (10,255, 255)
-
         x, y, radius = -1, -1, -1
         hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        cv2.imwrite(f"test/hsv_frame.jpg", hsv_frame)
 
         # construct a mask for the color "red", then perform
         # a series of dilations and erosions to remove any small
         # blobs left in the mask
         mask = cv2.inRange(hsv_frame, HSV_lower, HSV_upper)
-        cv2.imwrite(f"test/mask.jpg", mask)
         mask = cv2.erode(mask, None, iterations=1)
-        cv2.imwrite(f"test/mask_eroded.jpg", mask)
         mask = cv2.dilate(mask, None, iterations=1)
         cv2.imwrite(f"test/mask_dilated.jpg", mask)
 
@@ -126,7 +115,6 @@ class PID_controller:
         # only proceed if at least one contour was found
         try:
             if len(contours) > 0:
-                print("Found contour")
                 # find the largest contour in the mask, then use
                 # it to compute the minimum enclosing circle and
                 # centroid
@@ -144,7 +132,6 @@ class PID_controller:
         return center[0], center[1]  # x, y , radius
 
 
-    # def get_fan_rpm(self, image_frame=None, position=None):
     def get_fan_rpm(self, image_frame=None, position=None):
         #TODO Get the FAN RPM to push the ball to the target position
         #The slide moving up and down is where the ball is supposed to be
@@ -161,27 +148,26 @@ class PID_controller:
             # target is 121
             # range = 485 - 0
             pos = (float(485 - y)) / (485 - 0)  # scaled position
-            print("detected pos: ", pos)
         if position != None:
             pos = position
         output = 0.0
         p_error = 0.0
         d_error = 0.0
         i_error = 0.0
-        # TODO set that if no ball is detected then turn off fan RPM (don't use the detected pos  1.002061855670103)
         target_vel = 0.0
         self.error_pos = self.target_pos - pos
         error_vel = 0.0
         # print('detected at: {}, {}'.format(x, y))
         t = time.time()
         fan_rpm = 0
+        # if no ball is detected then turn off fan (fan_rpm = 0)
         if self.last_t is not None and y != -1:
             # TODO
             # implement the PID controller function and compute FAN rpm to reach the target position.
             # accumulate errors for the integral
             self.acc_pos_error += self.error_pos
             
-            # compute the difference in position between current frame and last frame
+            # compute the difference in error between current frame and last frame
             error_diff = self.error_pos - self.last_error_pos
 
             # if error_pos is negative, it means that we have to turn the fan on more
@@ -189,9 +175,6 @@ class PID_controller:
             fan_rpm = self.Kp * self.error_pos - self.Kd * error_diff + self.Ki * self.acc_pos_error 
             print("Pos: {}", self.detected_pos)
             print("Fan RPM: {} \tError: {}\tP: {}\tD: {}\tI: {}".format(fan_rpm, self.error_pos, self.Kp * self.error_pos, -self.Kd * error_diff, self.Ki * self.acc_pos_error))
-            # TODO consider using self.prev_fan_rpm + fan_rpm ?
-            # TODO figure out what to do with the bias ?
-            # fan_rpm =+ self.bias
 
         self.last_t = t
         self.last_pos = pos
