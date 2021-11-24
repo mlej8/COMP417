@@ -39,6 +39,7 @@ class PID_controller:
 
         self.detected_pos = 0.0
         self.rpm_output = 0.0
+        self.integral_windup = integral_windup
         ######################################
 
         self.error_pos = 0.0
@@ -92,14 +93,22 @@ class PID_controller:
         # rescale between [0, 255]
         frame = ((frame - frame.min()) / (frame.max() - frame.min())) * (255 - 0) + 0
         frame = frame.astype("uint8")
+        cv2.imwrite(f"test/rescaled_img_{KERNEL_SIZE}.jpg", frame)
 
-        thresh = 90
+        thresh = 100
         hsv_color = cv2.cvtColor(np.uint8([[bgr_color]]), cv2.COLOR_BGR2HSV)[0][0]
         HSV_lower = np.array([hsv_color[0] - thresh, hsv_color[1] - thresh, hsv_color[2] - thresh])
         HSV_upper = np.array([hsv_color[0] + thresh, hsv_color[1] + thresh, hsv_color[2] + thresh])
 
         x, y, radius = -1, -1, -1
         hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+        # get it brighter TODO delete
+        # cv2.imwrite(f"test/hsv_frame_{KERNEL_SIZE}.jpg", hsv_frame)
+        # hsv_frame[:,:,2] *= 8
+        # cv2.imwrite(f"test/hsv_frame_{KERNEL_SIZE}_bright.jpg", hsv_frame)
+        # hsv_frame[:,:,1] *= 4
+        # cv2.imwrite(f"test/hsv_frame_{KERNEL_SIZE}_sat.jpg", hsv_frame)
 
         # construct a mask for the color "red", then perform
         # a series of dilations and erosions to remove any small
@@ -146,8 +155,12 @@ class PID_controller:
             # print("min: {}, max: {}".format(self.min, self.max))
             # range is: 165 - 478, or 600-y is: 122 - 435
             # target is 121
-            # range = 485 - 0
+            range = 485 - 0
             pos = (float(485 - y)) / (485 - 0)  # scaled position
+            if y == -1:
+                # if ball is not found -> return 0 fan_rpm
+                return 0
+            self.detected_pos = pos
         if position != None:
             pos = position
         output = 0.0
@@ -167,18 +180,30 @@ class PID_controller:
             # accumulate errors for the integral
             self.acc_pos_error += self.error_pos
             
+            # integral windup
+            if self.acc_pos_error < - self.integral_windup:
+                self.acc_pos_error = self.integral_windup
+            elif self.acc_pos_error > self.integral_windup:
+                self.acc_pos_error = self.integral_windup
+
             # compute the difference in error between current frame and last frame
-            error_diff = self.error_pos - self.last_error_pos
+            error_diff = 0.0
+            if (t - self.last_t) > 0:
+                error_diff = (self.error_pos - self.last_error_pos) / (t - self.last_t)
 
             # if error_pos is negative, it means that we have to turn the fan on more
             # if error_pos is positive, it means that we have to turn the fan on less
-            fan_rpm = self.Kp * self.error_pos - self.Kd * error_diff + self.Ki * self.acc_pos_error 
+            fan_rpm = self.Kp * self.error_pos + self.Kd * error_diff + self.Ki * self.acc_pos_error 
             print("Pos: {}", self.detected_pos)
-            print("Fan RPM: {} \tError: {}\tP: {}\tD: {}\tI: {}".format(fan_rpm, self.error_pos, self.Kp * self.error_pos, -self.Kd * error_diff, self.Ki * self.acc_pos_error))
+            print("Fan RPM: {} \tError: {}\tP: {}\tD: {}\tI: {}".format(fan_rpm, self.error_pos, self.Kp * self.error_pos, self.Kd * error_diff, self.Ki * self.acc_pos_error))
+            if fan_rpm > 5000:
+                print("error")
 
         self.last_t = t
         self.last_pos = pos
         self.last_error_pos = self.error_pos
+        if self.last_error_pos < -1:
+            print("error")
         # print('p_e: {:10.4f}, d_e: {:10.4f}, i_e: {:10.4f}, output: {:10.4f}'.format(p_error, d_error, i_error, output))
         return fan_rpm
 
@@ -223,8 +248,7 @@ if __name__ == '__main__':
         print('vs - Validation Save Video Mode')
         print('quit - Exit')
 
-        # inputString = input("Select Job To Run: ")
-        inputString = "vn"
+        inputString = input("Select Job To Run: ")
         # inputString = "v 0.5"
         # inputString = "e"
         commands = inputString.split(";")
