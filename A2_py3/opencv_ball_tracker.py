@@ -72,7 +72,7 @@ class PID_controller:
         # You are given a basic opencv ball tracker. However, this won't work well for the noisy case.
         # Play around to get it working.
 
-        bgr_color = 10, 0, 190
+        bgr_color = 10, 0, 220
         """ 
         Kernel is normalized by KERNEL_SIZE^2. 
         This makes all elements in the matrix sum up to 1.
@@ -103,6 +103,7 @@ class PID_controller:
 
         x, y, radius = -1, -1, -1
         hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        cv2.imwrite(f"test/hsv_frame.jpg", hsv_frame)
 
         # construct a mask for the color "green", then perform
         # a series of dilations and erosions to remove any small
@@ -245,8 +246,7 @@ if __name__ == '__main__':
         print('vs - Validation Save Video Mode')
         print('quit - Exit')
 
-        # inputString = input("Select Job To Run: ")
-        inputString = "vn"
+        inputString = input("Select Job To Run: ")
         # inputString = "v 0.5"
         # inputString = "e"
         commands = inputString.split(";")
