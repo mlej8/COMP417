@@ -75,59 +75,50 @@ class PID_controller:
         #You are given a basic opencv ball tracker. However, this won't work well for the noisy case.
         #Play around to get it working.
 
-        bgr_color = 31, 0, 142
-
+        # bgr_color = 30, 0, 180
+        # bgr_color = 10, 0, 190
+        bgr_color = 10, 0, 190
+        # TODO if ball out of frame, just return that its position is 1 .. (max)
         # denoising (gaussian, median, non-local)
         """ 
         Kernel is normalized by KERNEL_SIZE^2. 
         This makes all elements in the matrix sum up to 1.
         We don't want to change the energy of the original image, and by multiplying the image by 1, we are not changing the total energy contained in the image. 
         """
-        KERNEL_SIZE = 5
+        KERNEL_SIZE = 7
         kernel = np.ones((KERNEL_SIZE,KERNEL_SIZE), np.float32) / KERNEL_SIZE**2 # float for more precision on the image normalized by 25
-        # denoised_img = cv2.filter2D(frame, -1, kernel)
-        # cv2.imwrite("test/original_img.jpg", frame)
-        # cv2.imwrite(f"test/denoise_img_kernel_{KERNEL_SIZE}.jpg", denoised_img)
-        # denoised_blur_img = cv2.blur(frame, (KERNEL_SIZE, KERNEL_SIZE))
-        # cv2.imwrite(f"test/denoise_img_blur_{KERNEL_SIZE}.jpg", denoised_blur_img)
-        # median_img = cv2.medianBlur(frame, KERNEL_SIZE)
-        # cv2.imwrite(f"test/denoise_img_median_blur_{KERNEL_SIZE}.jpg", median_img)
-        # bilateral_img = cv2.bilateralFilter(frame, 9, 75, 75)
-        # cv2.imwrite(f"test/denoise_img_bilateral_blur_{KERNEL_SIZE}.jpg", bilateral_img)
-        # frame = cv2.fastNlMeansDenoisingColored(frame,None,10,10,7,15)
-        # cv2.imwrite(f"test/denoise_img_nlm_blur_{KERNEL_SIZE}.jpg", nlm)
+        frame = frame[:500, 140:180] # crop the image to only consider the ball column
 
-        for i in range(8):
+        for _ in range(5):
             frame = cv2.filter2D(frame, -1, kernel)
-            # frame = cv2.fastNlMeansDenoisingColored(frame,None,10,10,7,15)
-            # frame = cv2.GaussianBlur(frame, (KERNEL_SIZE, KERNEL_SIZE), 0)
-            # cv2.imwrite(f"test/denoise_img_{KERNEL_SIZE}_{i}.jpg", frame)
-            # cv2.imwrite(f"test/nlm_img_{KERNEL_SIZE}_{i}.jpg", frame)
-            # cv2.imwrite(f"test/gaussian_img_{KERNEL_SIZE}_{i}.jpg", frame)
-        
-        
-        frame = self.rescale(frame, 0, 255, frame.min(), frame.max()).astype("uint8")
-        # frame = self.rescale(nlm, 0, 255, frame.min(), frame.max()).astype("uint8")
+
+        # rescale between [0, 255]
+        frame = ((frame - frame.min()) / (frame.max() - frame.min())) * (255 - 0) + 0
+        frame = frame.astype("uint8")
         cv2.imwrite(f"test/rescaled_img_{KERNEL_SIZE}.jpg", frame)
 
-        thresh = 100
+        thresh = 90
         hsv_color = cv2.cvtColor(np.uint8([[bgr_color]]), cv2.COLOR_BGR2HSV)[0][0]
         HSV_lower = np.array([hsv_color[0] - thresh, hsv_color[1] - thresh, hsv_color[2] - thresh])
         HSV_upper = np.array([hsv_color[0] + thresh, hsv_color[1] + thresh, hsv_color[2] + thresh])
+
+        # # TODO delete
+        # HSV_lower = (0,200,20)
+        # HSV_upper = (10,255, 255)
 
         x, y, radius = -1, -1, -1
         hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         cv2.imwrite(f"test/hsv_frame.jpg", hsv_frame)
 
-        # construct a mask for the color "green", then perform
+        # construct a mask for the color "red", then perform
         # a series of dilations and erosions to remove any small
         # blobs left in the mask
-        # mask = cv2.inRange(hsv, color_lower, color_upper)
-        # mask = cv2.inRange(hsv_frame, HSV_lower, HSV_upper)
         mask = cv2.inRange(hsv_frame, HSV_lower, HSV_upper)
         cv2.imwrite(f"test/mask.jpg", mask)
         mask = cv2.erode(mask, None, iterations=1)
+        cv2.imwrite(f"test/mask_eroded.jpg", mask)
         mask = cv2.dilate(mask, None, iterations=1)
+        cv2.imwrite(f"test/mask_dilated.jpg", mask)
 
         cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         contours = cnts[0]
@@ -146,9 +137,7 @@ class PID_controller:
                 #Ball is lost(went above the camera's line of sight)
                 if radius <= 2:
                     return -1, -1
-            else: # TODO erase this
-                print("nothing")
-        except e:
+        except Exception as e:
             print("no contour found ...")
             center = (-1, -1)
             pass
@@ -170,23 +159,23 @@ class PID_controller:
             # print("min: {}, max: {}".format(self.min, self.max))
             # range is: 165 - 478, or 600-y is: 122 - 435
             # target is 121
-            range = 485 - 0
+            # range = 485 - 0
             pos = (float(485 - y)) / (485 - 0)  # scaled position
-            self.detected_pos = pos
+            print("detected pos: ", pos)
         if position != None:
             pos = position
         output = 0.0
         p_error = 0.0
         d_error = 0.0
         i_error = 0.0
-
+        # TODO set that if no ball is detected then turn off fan RPM (don't use the detected pos  1.002061855670103)
         target_vel = 0.0
         self.error_pos = self.target_pos - pos
         error_vel = 0.0
         # print('detected at: {}, {}'.format(x, y))
         t = time.time()
         fan_rpm = 0
-        if self.last_t is not None:
+        if self.last_t is not None and y != -1:
             # TODO
             # implement the PID controller function and compute FAN rpm to reach the target position.
             # accumulate errors for the integral
@@ -251,7 +240,8 @@ if __name__ == '__main__':
         print('vs - Validation Save Video Mode')
         print('quit - Exit')
 
-        inputString = input("Select Job To Run: ")
+        # inputString = input("Select Job To Run: ")
+        inputString = "vn"
         # inputString = "v 0.5"
         # inputString = "e"
         commands = inputString.split(";")

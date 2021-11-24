@@ -203,9 +203,9 @@ class env:
                 if experiment_time >= 15:
                     if save_mode:
                         random_frames = np.concatenate(random_frames, axis=0).astype(np.uint8)
-                        np.save("../output/sample_video.npy", random_frames)
+                        np.save("output/sample_video.npy", random_frames)
                         imgs = [Image.fromarray(img, mode="RGB") for img in random_frames]
-                        imgs[0].save("../output/result.gif", save_all=True, append_images=imgs[1:], duration=30, loop=0)
+                        imgs[0].save("output/result.gif", save_all=True, append_images=imgs[1:], duration=30, loop=0)
 
                     running = False
                     #print some stats

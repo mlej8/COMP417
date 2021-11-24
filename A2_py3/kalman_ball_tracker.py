@@ -25,27 +25,23 @@ import pygame
 import pickle
 import time
 
+from PID_variables import *
 class PID_controller:
     def __init__(self, target_pos = -0.1):
         #TODO YOU CAN ADD new variables as needed
+        # values for the kalman filter
+        self.motion_sig = 4.0            # ball motion variance 
+        self.measurement_sig = 4.0       # measurement variance
+        self.mu = 0.0                    # gaussian mean (current gaussian)
+        self.sig = 10000.                # gaussian variance 
+
 
         ###EVERYTHING HERE MUST BE INCLUDED###
         self.target_pos = target_pos
-
-        self.Kp = 0.0
-        self.Ki = 0.0
-        self.Kd = 0.0
-        self.bias = 0.0
-        #
-        self.Kp = 6000
-        self.Ki = 500
-        self.Kd = 500
-        self.bias = 0.0
-
-        # self.Kp = 10000
-        # self.Ki = 5000
-        # self.Kd = 1000
-        # self.bias = 0.0
+        self.Kp = Kp
+        self.Ki = Ki
+        self.Kd = Kd
+        self.bias = bias
 
         self.detected_pos = 0.0
         self.rpm_output = 0.0
@@ -120,8 +116,10 @@ class PID_controller:
         return center[0], center[1]  # x, y , radius
 
     def get_kalman_filter_estimation(self, observation):
-        #TODO Implement the kalman filter ...
-        #observation is the estimated x,y position of the detect image
+        #TODO Implement the kalman filter ... 
+        # past position + some linear movement.
+        # 
+        #observation is the estimated x,y position (measurement) of the detect image
 
         kalman_filter_estimate = [155, 0] #Return the kalman filter adjusted values
         return kalman_filter_estimate[0], kalman_filter_estimate[1]
