@@ -26,153 +26,74 @@ import pickle
 import time
 
 from PID_variables import *
-class PID_controller:
+from opencv_ball_tracker import PID_controller
+class PID_controller_kf(PID_controller):
     def __init__(self, target_pos = -0.1):
         #TODO YOU CAN ADD new variables as needed
-        # values for the kalman filter
-        self.motion_sig = 4.0            # ball motion variance 
-        self.measurement_sig = 4.0       # measurement variance
-        self.mu = 0.0                    # gaussian mean (current gaussian)
-        self.sig = 10000.                # gaussian variance 
+        super().__init__(target_pos, use_kf=True)
+        
+        # parameters for the kalman filter
+        self.motion_sig = 1.0            # ball motion variance 
+        self.measurement_sig = 1.0       # measurement variance (uncertainty)
+        self.mu = 0.0                    # gaussian mean (estimate mean)
+        self.sig = 10.                # gaussian variance (estimate uncertainty)
 
+        self.Kp = kf_Kp
+        self.Ki = kf_Ki
+        self.Kd = kf_Kd
+        self.bias = kf_bias
 
-        ###EVERYTHING HERE MUST BE INCLUDED###
-        self.target_pos = target_pos
-        self.Kp = Kp
-        self.Ki = Ki
-        self.Kd = Kd
-        self.bias = bias
+    def update_state(self, measurement): 
+        """ State Update Equation """
+        K_gain = self.compute_kalman_gain()
+        # self.mu contains the predicted value from previous state of the current state
+        # update the current state with the measurement and the predicted value
+        self.mu = (1 - K_gain) * self.mu + K_gain * measurement
 
-        self.detected_pos = 0.0
-        self.rpm_output = 0.0
-        ######################################
+        # update state estimate uncertainty
+        self.update_estimate_uncertainty()
 
-        self.error_pos = 0.0
-        self.last_pos = 0.0
-        self.last_error_pos = 0.0
-        self.acc_pos_error = 0.0
+    def predict(self):
+        """ Predict next state """
+        # get the motion of the ball (assuming 1D for Kalman Filter as x never changes)
+        motion = self.mu - self.last_pos
 
-        self.last_t = None
+        # Dynamic model: past position + some linear movement
+        self.mu += motion
 
-        self.min = 1000000
-        self.max = 0
-        return
+        # predicted new position is noisy
+        self.sig += self.motion_sig
 
-    def set_target(self, target_pos):
-        self.target_pos = target_pos
-
-    def reset(self):
-        self.detected_pos = 0.0
-        self.rpm_output = 0.0
-        self.error_pos = 0.0
-        self.last_pos = 0.0
-        self.last_error_pos = 0.0
-        self.acc_pos_error = 0.0
-        self.last_t = None
-        return
-
-    def detect_ball(self, frame):
-        #TODO
-        #TODO You are given a basic opencv ball tracker. However, this won't work well for the noisy case.
-        #TODO Play around to get it working. You can reuse the one you implemented previously
-
-        bgr_color = 31, 0, 142
-        thresh = 100
-        hsv_color = cv2.cvtColor(np.uint8([[bgr_color]]), cv2.COLOR_BGR2HSV)[0][0]
-        HSV_lower = np.array([hsv_color[0] - thresh, hsv_color[1] - thresh, hsv_color[2] - thresh])
-        HSV_upper = np.array([hsv_color[0] + thresh, hsv_color[1] + thresh, hsv_color[2] + thresh])
-
-        x, y, radius = -1, -1, -1
-        hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-
-        # construct a mask for the color "green", then perform
-        # a series of dilations and erosions to remove any small
-        # blobs left in the mask
-        # mask = cv2.inRange(hsv, color_lower, color_upper)
-        mask = cv2.inRange(hsv_frame, HSV_lower, HSV_upper)
-        mask = cv2.erode(mask, None, iterations=1)
-        mask = cv2.dilate(mask, None, iterations=1)
-
-        cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        contours = cnts[0]
-        center = (-1, -1)
-        # only proceed if at least one contour was found
-        try:
-            if len(contours) > 0:
-                # find the largest contour in the mask, then use
-                # it to compute the minimum enclosing circle and
-                # centroid
-                c = max(contours, key=cv2.contourArea)
-                ((x, y), radius) = cv2.minEnclosingCircle(c)
-                M = cv2.moments(mask)
-                center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
-                #Ball is lost(went above the camera's line of sight)
-                if radius <= 2:
-                    return -1, -1
-        except e:
-            #no contour found ...
-            center = (-1, -1)
-            pass
-        return center[0], center[1]  # x, y , radius
+    def compute_kalman_gain(self):
+        K_gain = (self.sig / (self.sig + self.measurement_sig))
+        return K_gain
+    
+    def update_estimate_uncertainty(self):
+        """Covariance update Equation
+        
+        Update the estimate uncertainty of the current state.
+        We can see from the equation that the estimate uncertainty always gets smaller with each filter iteration, because (1 - K_gain) <= 1.
+        If measurement uncertainty is large, K_gain will be small, consequently convergence (to 0) of estimate uncertainty will be slow.
+        If measurement uncertainty is small, K_gain will be large, consequently convergence (to 0) of estimate uncertainty will be fast.
+        """
+        self.sig = (1 - self.compute_kalman_gain()) * self.sig
 
     def get_kalman_filter_estimation(self, observation):
         #TODO Implement the kalman filter ... 
-        # past position + some linear movement.
-        # 
-        #observation is the estimated x,y position (measurement) of the detect image
+        # observation is the estimated x,y position of the detect image
 
-        kalman_filter_estimate = [155, 0] #Return the kalman filter adjusted values
+        self.update_state(observation[1])
+        
+        # return the kalman filter adjusted values
+        kalman_filter_estimate = [observation[0], self.mu] 
+
+        self.predict()
         return kalman_filter_estimate[0], kalman_filter_estimate[1]
-
-
-    # def get_fan_rpm(self, image_frame=None, position=None):
-    def get_fan_rpm(self, image_frame=None, position=None):
-        #TODO Get the FAN RPM to push the ball to the target position
-        #The slide moving up and down is where the ball is supposed to be
-        pos = 0.0
-        if image_frame is not None:
-            observation = self.detect_ball(image_frame)
-            x, y = self.get_kalman_filter_estimation(observation)
-            if y >= 0:
-                if y > self.max:
-                    self.max = y
-                if y < self.min:
-                    self.min = y
-            # print("min: {}, max: {}".format(self.min, self.max))
-            # range is: 165 - 478, or 600-y is: 122 - 435
-            # target is 121
-            range = 485 - 0
-            pos = (float(485 - y)) / (485 - 0)  # scaled position
-            self.detected_pos = pos
-        if position != None:
-            pos = position
-        output = 0.0
-        p_error = 0.0
-        d_error = 0.0
-        i_error = 0.0
-
-        target_pos = self.target_pos
-        target_vel = 0.0
-        self.error_pos = target_pos - pos
-        error_vel = 0.0
-        # print('detected at: {}, {}'.format(x, y))
-        t = time.time()
-        fan_rpm = 0
-        if self.last_t is not None:
-            fan_rpm = 1
-
-        self.last_t = t
-        self.last_pos = pos
-        self.last_error_pos = self.error_pos
-        # print('p_e: {:10.4f}, d_e: {:10.4f}, i_e: {:10.4f}, output: {:10.4f}'.format(p_error, d_error, i_error, output))
-        return fan_rpm
-
-
 
 def run_simulator(graph_index, graph_time, graph_position, graph_error, graph_fan, graph_target, validation_mode, save_mode, noisy_mode):
     global xdata
     global ydata
-    env = simulation.env(PID_controller, graph_index, graph_time, graph_position, graph_error, graph_fan, graph_target)
+    env = simulation.env(PID_controller_kf, graph_index, graph_time, graph_position, graph_error, graph_fan, graph_target)
     if validation_mode:
         env.run_validation(noisy_mode, save_mode)
     else:

@@ -28,7 +28,7 @@ import time
 from PID_variables import *
 
 class PID_controller:
-    def __init__(self, target_pos = -0.1):      
+    def __init__(self, target_pos = -0.1, use_kf=False):      
         ###EVERYTHING HERE MUST BE INCLUDED###
         self.target_pos = target_pos
 
@@ -52,7 +52,8 @@ class PID_controller:
 
         self.min = 1000000
         self.max = 0
-        return
+
+        self.use_kf = use_kf
 
     def set_target(self, target_pos):
         self.target_pos = target_pos
@@ -71,8 +72,11 @@ class PID_controller:
         #TODO
         # You are given a basic opencv ball tracker. However, this won't work well for the noisy case.
         # Play around to get it working.
-
-        bgr_color = 10, 0, 220
+        noisy = False
+        if frame.sum() > 50000000:
+            noisy = True
+        print(frame.sum(), noisy)
+        bgr_color = 10, 0, 200
         """ 
         Kernel is normalized by KERNEL_SIZE^2. 
         This makes all elements in the matrix sum up to 1.
@@ -81,16 +85,18 @@ class PID_controller:
         KERNEL_SIZE = 7
 
         # mean filter
-        kernel = np.ones((KERNEL_SIZE,KERNEL_SIZE), np.float32) / KERNEL_SIZE**2 # float for more precision on the image normalized by 25
+        # float for more precision on the image normalized by 25
+        kernel = np.ones((KERNEL_SIZE,KERNEL_SIZE), np.float32) / KERNEL_SIZE**2 
 
         # crop the image to only consider the ball column since it is static
-        frame = frame[:505, 135:190] 
+        frame = frame[:510, 135:190] 
 
         # applying filter multiple times
-        FILTER_TIMES = 8
-        for _ in range(FILTER_TIMES):
-            frame = cv2.filter2D(frame, -1, kernel)
-
+        if noisy:
+            FILTER_TIMES = 10
+            for _ in range(FILTER_TIMES):
+                frame = cv2.filter2D(frame, -1, kernel)
+        
         # rescale between [0, 255]
         frame = ((frame - frame.min()) / (frame.max() - frame.min())) * (255 - 0) + 0
         frame = frame.astype("uint8")
@@ -109,6 +115,18 @@ class PID_controller:
         # a series of dilations and erosions to remove any small
         # blobs left in the mask
         mask = cv2.inRange(hsv_frame, HSV_lower, HSV_upper)
+        if not noisy:
+            # lower mask (0-10) 
+            lower_red = np.array([0,50,50])
+            upper_red = np.array([5,255,255])
+            mask0 = cv2.inRange(hsv_frame, lower_red, upper_red)
+
+            # upper mask (170-180)
+            lower_red = np.array([170,50,50])
+            upper_red = np.array([180,255,255])
+            mask1 = cv2.inRange(hsv_frame, lower_red, upper_red)
+            mask += mask0 + mask1
+            cv2.imwrite(f"test/mask.jpg", mask)
         mask = cv2.erode(mask, None, iterations=1)
         mask = cv2.dilate(mask, None, iterations=1)
         cv2.imwrite(f"test/mask_dilated.jpg", mask)
@@ -127,7 +145,7 @@ class PID_controller:
                 M = cv2.moments(mask)
                 center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
                 #Ball is lost(went above the camera's line of sight)
-                if radius <= 6:
+                if radius <= 8:
                     return -1, -1
         except Exception as e:
             print("no contour found ...")
@@ -142,6 +160,14 @@ class PID_controller:
         pos = 0.0
         if image_frame is not None:
             x, y = self.detect_ball(image_frame)
+            if y == -1:
+                # if ball is not found -> return 0 fan_rpm
+                return 0
+
+            range = (485 - 0)
+            pos = (float(485 - y)) / range  # scaled position
+            if self.use_kf:
+                x, pos = self.get_kalman_filter_estimation([x,pos])
             if y >= 0:
                 if y > self.max:
                     self.max = y
@@ -150,11 +176,6 @@ class PID_controller:
             # print("min: {}, max: {}".format(self.min, self.max))
             # range is: 165 - 478, or 600-y is: 122 - 435
             # target is 121
-            range = 485 - 0
-            pos = (float(485 - y)) / range  # scaled position
-            if y == -1:
-                # if ball is not found -> return 0 fan_rpm
-                return 0
             self.detected_pos = pos
         if position != None:
             pos = position
@@ -186,7 +207,7 @@ class PID_controller:
             if (t - self.last_t) > 0:
                 error_diff = (self.error_pos - self.last_error_pos) / (t - self.last_t)
 
-            error_diff_threshold = 2000
+            error_diff_threshold = 1750
             if error_diff * self.Kd > error_diff_threshold:
                 print("capped")
                 error_diff = error_diff_threshold  / self.Kd
