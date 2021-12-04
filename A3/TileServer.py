@@ -178,6 +178,10 @@ class TileServer(object):
         pixelY = (0.5 - math.log((1 + sinLatitude) / (1 - sinLatitude)) / (4 * math.pi)) * 256 * 2 ** zoomLevel
         return pixelX, pixelY
 
+    def imagePixelsToLL(self, actual_pX, actual_pY, zoomLevel,  imx, imy):
+        #TODO if needed
+        return 1, 1
+
 
 if __name__ == "__main__":
     lat, lon = 45.505955, -73.576675

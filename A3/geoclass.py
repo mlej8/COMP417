@@ -23,7 +23,11 @@ from sklearn.decomposition import PCA
 from sklearn.svm import SVC
 import numpy as np
 from PIL import Image
-from imageio import imread
+try:
+    from scipy.misc import imread
+except ImportError:
+    from scipy.misc.pilutil import imread
+
 # module for loading image data
 import loader
 
