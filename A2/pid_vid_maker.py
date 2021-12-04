@@ -69,7 +69,7 @@ def detect_ball(frame):
     # (x, y) center of the ball
     cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     #contours = contours[0] if imutils.is_cv2() else contours[1]
-    contours = cnts[1]
+    contours = cnts[0]
     center = (-1, -1)
 
     # only proceed if at least one contour was found
@@ -152,7 +152,7 @@ for key in sorted(pos_to_file.keys()):
 
 min_pos = np.min(sorted_keys)
 max_pos = np.max(sorted_keys)
-print('pos range: {} to {}'.format(min_pos, max_pos))
+print(('pos range: {} to {}'.format(min_pos, max_pos)))
 
 
 

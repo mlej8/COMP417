@@ -1,8 +1,17 @@
 __author__ = "Travis Manderson"
 __copyright__ = "Copyright 2018, Travis Manderson"
 
+import sys
+if len(sys.argv) > 1:
+    if sys.argv[1] == 'headless':
+        import matplotlib
+        matplotlib.use("Agg")
+
 import matplotlib.pyplot as plt
 import numpy as np
+
+
+
 
 def plot_matplotlib(t_series, target_pos, y_series, real_pos, real_error, fan_series):
     fig, (ax1, ax2) = plt.subplots(2, 1, sharey=False)
@@ -37,7 +46,7 @@ def plot_matplotlib(t_series, target_pos, y_series, real_pos, real_error, fan_se
 
     fig.tight_layout()
     fig.set_size_inches(18, 9)
-    plt.savefig('pid performance.png', dpi=100)
+    plt.savefig('output/pid_performance.png', dpi=100)
     plt.show()
     return
 

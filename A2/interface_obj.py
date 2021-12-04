@@ -2,6 +2,7 @@ __author__ = "Travis Manderson"
 __copyright__ = "Copyright 2018, Travis Manderson"
 
 import pygame, math, sys
+import platform
 pygame.font.init()
 # font = pygame.font.SysFont("Verdana", 12)
 font = pygame.font.Font('resources/COMIC.TTF', 12)
@@ -37,9 +38,12 @@ class VSlider():
         self.surf = pygame.surface.Surface((60, self.height))
         self.hit = False  # the hit attribute indicates slider movement due to mouse interaction
 
-        self.ntxt_surf = font.render(name, 1, WHITE)
-        self.ntxt_rect = self.ntxt_surf.get_rect(center=(30, self.height-10))
 
+        if platform.system() == 'Darwin':
+            self.ntxt_surf = font.render(name, 0, WHITE)
+        else:
+            self.ntxt_surf = font.render(name, 1, WHITE)
+        self.ntxt_rect = self.ntxt_surf.get_rect(center=(30, self.height-10))
         # Static graphics - slider background #
         # self.surf.fill((100, 100, 100))
         self.surf.fill(TRANS)

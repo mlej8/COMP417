@@ -7,6 +7,8 @@ import pygame
 from multiprocessing import Lock
 from interface_obj import *
 from helpers import *
+from PIL import Image
+import cv2
 
 class env:
     def __init__(self, PID_controller, graph_index=None, graph_time=None, graph_position=None, graph_error=None, graph_fan=None, graph_target=None):
@@ -195,23 +197,27 @@ class env:
                         np.random.randint(15, 150)
 
                     if random_steps % 6 == 0:
-                        random_frames.append(np.expand_dims(np.copy(self.ball.current_frame), axis=0))
+                        frame = cv2.cvtColor(self.ball.current_frame, cv2.COLOR_BGR2RGB)
+                        random_frames.append(np.expand_dims(np.copy(frame), axis=0))
 
                 if experiment_time >= 15:
                     if save_mode:
                         random_frames = np.concatenate(random_frames, axis=0).astype(np.uint8)
-                        np.save("sample_video.npy", random_frames)
+                        np.save("output/sample_video.npy", random_frames)
+                        imgs = [Image.fromarray(img, mode="RGB") for img in random_frames]
+                        imgs[0].save("output/result.gif", save_all=True, append_images=imgs[1:], duration=30, loop=0)
 
                     running = False
                     #print some stats
                     idx = find_nearest_index(self.t_series, self.t_series[-1]-2.0) #index of two seconds ago
                     detection_error = np.abs(np.array(self.real_pos[idx:]) - np.array(self.y_series[idx:]))
                     steadystate_error = np.abs(np.array(self.target_series[idx:]) - np.array(self.real_pos[idx:]))
-                    print('Average detection is: {}'.format(np.mean(detection_error)))
-                    print('Average stead state error is: {}'.format(np.mean(steadystate_error)))
+                    print(('Average detection is: {}'.format(np.mean(detection_error))))
+                    print(('Average stead state error is: {}'.format(np.mean(steadystate_error))))
                     #show and save plot
                     pid_plotter.plot_matplotlib(self.t_series, self.target_series, self.y_series, self.real_pos, self.real_error,
                                                 self.fan_series)
+
 
             if mouse_down:
                 (mouseX, mouseY) = pygame.mouse.get_pos()
