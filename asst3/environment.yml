@@ -1,0 +1,13 @@
+name: asst3
+
+channels: 
+        - conda-forge
+
+dependencies:
+        - python=3.7.0
+        - pip
+        - matplotlib
+        - Pillow
+        - scikit-learn
+        - scipy=1.2.0
+
