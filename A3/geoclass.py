@@ -23,10 +23,7 @@ from sklearn.decomposition import PCA
 from sklearn.svm import SVC
 import numpy as np
 from PIL import Image
-try:
-    from scipy.misc import imread
-except ImportError:
-    from scipy.misc.pilutil import imread
+import imageio
 
 # module for loading image data
 import loader
@@ -34,13 +31,11 @@ import loader
 ###############################################################################
 # Compute a PCA (eigenfaces) on the face dataset (treated as unlabeled
 # dataset): unsupervised feature extraction / dimensionality reduction
-n_components = 150
 n_components = 20
 # Use color images
 color=1
 # enable extra debugging?
 debug = 0
-#
 # Sadly, the image size is embedded here
 IMAGE_SIDE=256
 
@@ -278,7 +273,7 @@ def classifyOne(pca, clf, patch, target_names=[""]*10):
 def classifyFile(pca, clf, filePath, target_names=[""]*10):
     """ Give a pca dimensionality-reduction eigenspace and a SVM classifier for it, use that to
     classify a single image patch. """
-    im = imread(filePath)
+    im = imageio.imread(filePath)
     im = np.asarray(im, dtype=np.float32)
     im = np.ravel( im )
     return classifyOne(pca, clf, im,  classnames)

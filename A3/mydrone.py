@@ -159,11 +159,16 @@ while len(sys.argv)>1:
 ##########################################################################################
 def autodraw():
     """ Automatic draw. """
-    draw_objects()
-    tkwindow.canvas.after(100, autodraw)
+    brownian = True
+    draw_objects(brownian)
+    global delta_t
+    tkwindow.canvas.after(delta_t, autodraw)
 
-def draw_objects():
-    """ Draw target balls or stuff on the screen. """
+def draw_objects(brownian=True):
+    """ 
+    Draw target balls or stuff on the screen. 
+    The `brownian` argument dictates whether to use Brownian motion or a custom coverage algorithm
+    """
     global tx, ty, maxdx, maxdy, unmoved
     global oldp
     global objectId
@@ -171,6 +176,8 @@ def draw_objects():
     global actual_pX, actual_pY
     global fill
     global scalex, scaley  # scale factor between out picture and the tileServer
+    global delta_t
+    global myImageSize
 
     #tkwindow.canvas.move( objectId, int(tx-MYRADIUS)-oldp[0],int(ty-MYRADIUS)-oldp[1] )
     if unmoved:
@@ -180,7 +187,7 @@ def draw_objects():
     else:
         # draw the line showing the path
         tkwindow.polyline([oldp,[oldp[0]+tx,oldp[1]+ty]], style=5, tags=["path"]  )
-        tkwindow.canvas.move( objectId, tx,ty )
+        tkwindow.canvas.move(objectId, tx, ty)
 
     # update the drone position
     oldp = [oldp[0]+tx,oldp[1]+ty]
@@ -194,8 +201,8 @@ def draw_objects():
     # get the image tile for our position, using the lat long we just recovered
     im, foox, fooy, fname = ts.tiles_as_image_from_corr(lat, lon, zoomLevel, 1, 1, 0, 0)
 
-    # Use the classifier here on the image "im"
-
+    # TODO Use the classifier here on the image "im"
+    
     # This is the drone, let's move it around
     tkwindow.canvas.itemconfig(objectId, tag='userball', fill=fill)
     tkwindow.canvas.drawn = objectId
@@ -218,10 +225,49 @@ def draw_objects():
     # Move a small amount by changing tx,ty
     # TODO
     # RIGHT NOW It moves diagonally ...
-    tx = 1
-    ty = 1
 
+    if brownian:
+        # https://scipy-cookbook.readthedocs.io/items/BrownianMotion.html
+        # https://ipython-books.github.io/133-simulating-a-brownian-motion/
+        
+        # randomly generate the duration of each sampled brownian motion
+        n_steps = random.randint(1e2,1e6)
 
+        # simulate x and y movements following Brownian motion
+        movements = np.random.normal(size=(n_steps - 1, len(oldp))) / np.sqrt(n_steps)
+
+        # scale movements proportional to grid size (e.g. a movement of (1,1), corresponds to (256,256) because every grid cell is (256x256))
+        tx, ty = np.cumsum(movements, axis=0)[-1]
+
+        # constant factor to scale up drone's movements
+        movement_scale = 10
+        
+        # times a scalar to make movement bigger (otherwise, drone will stay in the same grid cell forever as brownian motion results in small movements)
+        tx *= movement_scale
+        ty *= movement_scale
+    else:
+        # TODO at each position, go to the nearest unexplored tile...
+        # TODO do DFS
+        custom_movement_scale = 7.5
+
+        # custom exploration method: uniformly sampling of movements [-10,10]
+        tx = random.randint(-custom_movement_scale, custom_movement_scale)
+        ty = random.randint(-custom_movement_scale, custom_movement_scale)
+    
+    # make sure drone doesn't go out of frame
+    if oldp[0] + tx > myImageSize:
+        tx = 0
+    
+    if oldp[1] + ty > myImageSize:
+        ty = 0
+    
+    if oldp[0] + tx < 0:
+        tx = 0
+    
+    if oldp[1] + ty < 0:
+        ty = 0
+
+    print(tx, ty)
 
 fill = "white"
 ts = TileServer.TileServer()
@@ -229,12 +275,20 @@ ts = TileServer.TileServer()
 lat, lon = 45.44203, -73.602995    # verdun
 tilesX = 20
 tilesY = 20
+
+# map storing the occupancy of each tile
+tiles_occ = np.zeros((tilesX, tilesY))
+total_distance = 0
+terrain_distribution = {"urban": 0, "water": 0, "arable": 0}
+num_tiles_visited = 0
+
 tilesOffsetX = 0
 tilesOffsetY = 0
 zoomLevel = 18
-image_storage = [ ] # list of image objects to avoid memory being disposed of
+image_storage = [] # list of image objects to avoid memory being disposed of
 
 bigpic, actual_pX, actual_pY, fname = ts.tiles_as_image_from_corr(lat, lon, zoomLevel, tilesX, tilesY, tilesOffsetX, tilesOffsetY)
+# bigpic.save("test2.png")
 # bigpic is really big
 #bigpic.show()
 
@@ -245,9 +299,9 @@ im.save("mytemp.gif") # save the image as a GIF and re-load it does to fragile n
 import tkinter as tk
 # How to draw a rectangle.
 # You should delete or comment out the next 3 lines.
-draw = ImageDraw.Draw(bigpic)
-xt,yt = 0,0
-draw.rectangle(((xt*256-1, yt*256-1), (xt*256+256+1, yt*256+256+1)), fill="red")
+# draw = ImageDraw.Draw(bigpic)
+# xt,yt = 0,0
+# draw.rectangle(((xt*256-1, yt*256-1), (xt*256+256+1, yt*256+256+1)), fill="red")
 
 # put in image
 
@@ -282,14 +336,17 @@ MARK="mark"
 
 # Place our simulated drone on the map
 sx,sy=600,640 # over the river
-sx,sy = 220,280 # over the canal in Verdun, mixed environment
+# sx,sy = 220,280 # over the canal in Verdun, mixed environment
 oldp = [sx,sy]
 objectId = tkwindow.canvas.create_oval(int(sx-MYRADIUS),int(sy-MYRADIUS), int(sx+MYRADIUS),int(sy+MYRADIUS),tag=MARK)
 unmoved =  1
 
+# time in ms
+delta_t = 100
+
 # initialize the classifier
 # We can use it later using these global variables.
-#
+
 # launch the drawing thread
 autodraw()
 

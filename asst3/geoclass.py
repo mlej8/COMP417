@@ -34,9 +34,10 @@ import loader
 # dataset): unsupervised feature extraction / dimensionality reduction
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument("--num_components", default=20)
+parser.add_argument("--num_components", default=20, type=int)
 args = parser.parse_args()
 n_components = args.num_components
+print("number of components ", n_components)
 # Use color images
 color=1
 # enable extra debugging?
@@ -282,7 +283,7 @@ def classifyFile(pca, clf, filePath, target_names=[""]*10):
     im = imageio.imread(filePath)
     im = np.asarray(im, dtype=np.float32)
     im = np.ravel( im )
-    return classifyOne(pca, clf, im,  classnames)
+    return classifyOne(pca, clf, im,  target_names)
 
 
 import pickle

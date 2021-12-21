@@ -12,6 +12,9 @@ import tkinter as tk
 import sys
 from PIL import Image
 from PIL import ImageTk
+import pyscreenshot as ImageGrab
+import imageio
+import datetime
 missing = []
 import geoclass
 fix = ""
@@ -159,18 +162,15 @@ while len(sys.argv)>1:
 ##########################################################################################
 def autodraw():
     """ Automatic draw. """
-    draw_objects()
-    tkwindow.canvas.after(100, autodraw)
+    brownian = True
+    draw_objects(brownian)
+    global delta_t
+    tkwindow.canvas.after(delta_t, autodraw)
 
-def draw_objects():
+def draw_objects(brownian=True):
     """ Draw target balls or stuff on the screen. """
     global tx, ty, maxdx, maxdy, unmoved
-    global oldp
-    global objectId
-    global ts # tileServer
-    global actual_pX, actual_pY
-    global fill
-    global scalex, scaley  # scale factor between out picture and the tileServer
+    global oldp, maps_storage, objectId, ts, actual_pX, stack, actual_pY, fill, scalex, scaley, delta_t, myImageSize, total_distance, tiles_occ, terrain_distribution, num_tiles_visited, pca, clf, classnames
 
     #tkwindow.canvas.move( objectId, int(tx-MYRADIUS)-oldp[0],int(ty-MYRADIUS)-oldp[1] )
     if unmoved:
@@ -182,9 +182,13 @@ def draw_objects():
         tkwindow.polyline([oldp,[oldp[0]+tx,oldp[1]+ty]], style=5, tags=["path"]  )
         tkwindow.canvas.move( objectId, tx,ty )
 
+    prev_tileX, prev_tileY = tile_coords(oldp)
+    
     # update the drone position
     oldp = [oldp[0]+tx,oldp[1]+ty]
 
+    curr_tileX, curr_tileY = tile_coords(oldp)
+    
     # map drone location back to lat, lon
     # This transforms pixels to WSG84 mapping, to lat,lon
     lat,lon = ts.imagePixelsToLL( actual_pX, actual_pY, zoomLevel,  oldp[0]/(256/scalex), oldp[1]/(256/scaley) )
@@ -192,8 +196,20 @@ def draw_objects():
     # get the image tile for our position, using the lat long we just recovered
     im, foox, fooy, fname = ts.tiles_as_image_from_corr(lat, lon, zoomLevel, 1, 1, 0, 0)
 
-    # Use the classifier here on the image "im"
-
+    # TODO use the classifier here on the image "im"
+    pred, class_name = geoclass.classifyFile(pca, clf, fname, classnames)
+    
+    # TODO avoid tiles that are urban (if we entered one, go back and make sure we start on non-urban tiles)
+    if class_name == "urban":
+        # if the current tile is urban, then go back
+        oldp = [oldp[0]-tx,oldp[1]-ty]
+        tx = 0 
+        ty = 0
+        if not brownian and stack:
+            # remove this tile
+            stack.pop()
+        return
+    
     # This is the drone, let's move it around
     tkwindow.canvas.itemconfig(objectId, tag='userball', fill=fill)
     tkwindow.canvas.drawn = objectId
@@ -211,15 +227,106 @@ def draw_objects():
     tkwindow.canvas.tag_lower( "background" )
     tkwindow.canvas.pack()
 
+    # TODO validate that we are appending a valid map here for the GIF
+    # keep track of state of the map to generate a gif of the trajectory
+    x0 = tkwindow.canvas.winfo_rootx()
+    y0 = tkwindow.canvas.winfo_rooty()
+    x1 = x0 + tkwindow.canvas.winfo_width()
+    y1 = y0 + tkwindow.canvas.winfo_height()
+    maps_storage.append(ImageGrab.grab(bbox=(x0,y0,x1,y1)))
 
     # Code to move the drone can go here
     # Move a small amount by changing tx,ty
     # TODO
     # RIGHT NOW It moves diagonally ...
-    tx = 1
-    ty = 1
+    # tx = 1
+    # ty = 1
+    
+    # coverage algoirthm #1 random Brownian motion which is the baseline
+    if brownian:
+        # https://scipy-cookbook.readthedocs.io/items/BrownianMotion.html
+        # https://ipython-books.github.io/133-simulating-a-brownian-motion/
+        
+        # randomly generate the duration of each sampled brownian motion
+        n_steps = random.randint(1e2,1e6)
+
+        # simulate x and y movements following Brownian motion
+        movements = np.random.normal(size=(n_steps - 1, len(oldp))) / np.sqrt(n_steps)
+
+        # scale movements proportional to grid size (e.g. a movement of (1,1), corresponds to (256,256) because every grid cell is (256x256))
+        tx, ty = np.cumsum(movements, axis=0)[-1]
+
+        # constant factor to scale up drone's movements
+        movement_scale = 10
+        
+        # times a scalar to make movement bigger (otherwise, drone will stay in the same grid cell forever as brownian motion results in small movements)
+        tx *= movement_scale
+        ty *= movement_scale
+    else:
+        # coverage algorithm #2 : DFS
+        # TODO at each position, go to the nearest unexplored tile...
+        # TODO do DFS
+        if tiles_occ[curr_tileX][curr_tileY]:
+            stack.pop()
+        else:
+            # TODO for each tile check if its in bounds, if it is add it to stack
+            if 0:
+                stack.append(curr_tileX + 1, curr_tileY)
+                stack.append(curr_tileX - 1, curr_tileY)
+                stack.append(curr_tileX, curr_tileY + 1)
+                stack.append(curr_tileX, curr_tileY - 1)
+
+        # TODO if the last tile is the same as the current one, pop current one and take the one before
+
+        next_tileX, next_tileY = stack[0]
+        # TODO pop from stack
+
+        # compute distance to get to the middle of target tile
+        tx = ((next_tileX + 0.5) * (myImageSize/tilesX)) - oldp[0]
+        ty = ((next_tileY + 0.5) * (myImageSize/tilesY)) - oldp[1]
+    
+    # make sure drone doesn't go out of frame
+    if oldp[0] + tx > myImageSize:
+        tx = 0
+    
+    if oldp[1] + ty > myImageSize:
+        ty = 0
+    
+    if oldp[0] + tx < 0:
+        tx = 0
+    
+    if oldp[1] + ty < 0:
+        ty = 0
+
+    # account for distance travelled
+    total_distance += math.sqrt(tx ** 2 + ty ** 2)
+    
+    # account for distribution of terrain types visited (only add if this is an unvisited tile)
+    terrain_distribution[class_name] += 0 if tiles_occ[curr_tileX][curr_tileY] else 1
+
+    # mark this tile as visited
+    tiles_occ[curr_tileX][curr_tileY] = 1
+
+    # count total number of tiles visited
+    num_tiles_visited += 0 if prev_tileX == curr_tileX and curr_tileY == prev_tileY else 1
 
 
+    if total_distance > 50000:
+        # write down all the stats and exit
+
+        # generate gifs
+        name_suffix = "brownian" if brownian else "custom"
+        imageio.mimsave(f"movie_{name_suffix}.gif", maps_storage)
+
+        with open(f"logs_{name_suffix}_{datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}","w") as f:
+            f.write(f"total_distance: {total_distance}\ttile ratio: {tiles_occ.sum()/num_tiles_visited}\tnumber of total tiles: {num_tiles_visited}\tnum unique tiles: {tiles_occ.sum()}\tterrain distribution: {terrain_distribution}\n")
+
+        exit(0)
+
+def tile_coords(pos):
+    """ Given a position in (pixelX, pixelY), return tile coordinates (tileX, tileY) """
+    global myImageSize
+    return int(pos[0] // (myImageSize/tilesX)), int(pos[1] // (myImageSize/tilesY))
 
 fill = "white"
 ts = TileServer.TileServer()
@@ -231,6 +338,7 @@ tilesOffsetX = 0
 tilesOffsetY = 0
 zoomLevel = 18
 image_storage = [ ] # list of image objects to avoid memory being disposed of
+maps_storage = []
 
 bigpic, actual_pX, actual_pY, fname = ts.tiles_as_image_from_corr(lat, lon, zoomLevel, tilesX, tilesY, tilesOffsetX, tilesOffsetY)
 # bigpic is really big
@@ -241,13 +349,6 @@ im.save("mytemp.gif") # save the image as a GIF and re-load it does to fragile n
 
 
 import tkinter as tk
-# How to draw a rectangle.
-# You should delete or comment out the next 3 lines.
-draw = ImageDraw.Draw(bigpic)
-xt,yt = 0,0
-draw.rectangle(((xt*256-1, yt*256-1), (xt*256+256+1, yt*256+256+1)), fill="red")
-
-# put in image
 
 # Size of our on-screen drawing is arbitrarily small
 myImageSize = 1024
@@ -280,14 +381,24 @@ MARK="mark"
 
 # Place our simulated drone on the map
 sx,sy=600,640 # over the river
-sx,sy = 220,280 # over the canal in Verdun, mixed environment
+# sx,sy = 220,220 # over the canal in Verdun, mixed environment
 oldp = [sx,sy]
 objectId = tkwindow.canvas.create_oval(int(sx-MYRADIUS),int(sy-MYRADIUS), int(sx+MYRADIUS),int(sy+MYRADIUS),tag=MARK)
 unmoved =  1
 
+# global variables
+delta_t = 100
+
+# map storing the occupancy of each tile
+tiles_occ = np.zeros((tilesX, tilesY))
+total_distance = 0
+terrain_distribution = {"urban": 0, "water": 0, "arable": 0} # contains unique number of tiles
+num_tiles_visited = 1
+stack = [] # stack for DFS
+
 # initialize the classifier
-# We can use it later using these global variables.
-#
+pca, clf, classnames = geoclass.loadState("classifier.state", 1.0)
+
 # launch the drawing thread
 autodraw()
 
