@@ -170,7 +170,7 @@ def autodraw():
 def draw_objects(brownian=True):
     """ Draw target balls or stuff on the screen. """
     global tx, ty, maxdx, maxdy, unmoved
-    global oldp, maps_storage, objectId, ts, actual_pX, stack, actual_pY, fill, scalex, scaley, delta_t, myImageSize, total_distance, tiles_occ, terrain_distribution, num_tiles_visited, pca, clf, classnames
+    global oldp, og_lat, tilesX, tilesY, og_lon, maps_storage, objectId, ts, actual_pX, stack, actual_pY, fill, scalex, scaley, delta_t, myImageSize, total_distance, tiles_occ, terrain_distribution, num_tiles_visited, pca, clf, classnames
 
     #tkwindow.canvas.move( objectId, int(tx-MYRADIUS)-oldp[0],int(ty-MYRADIUS)-oldp[1] )
     if unmoved:
@@ -195,7 +195,7 @@ def draw_objects(brownian=True):
 
     # get the image tile for our position, using the lat long we just recovered
     im, foox, fooy, fname = ts.tiles_as_image_from_corr(lat, lon, zoomLevel, 1, 1, 0, 0)
-
+    # im.save("tile.png")
     # TODO use the classifier here on the image "im"
     pred, class_name = geoclass.classifyFile(pca, clf, fname, classnames)
     
@@ -229,18 +229,13 @@ def draw_objects(brownian=True):
 
     # TODO validate that we are appending a valid map here for the GIF
     # keep track of state of the map to generate a gif of the trajectory
-    x0 = tkwindow.canvas.winfo_rootx()
-    y0 = tkwindow.canvas.winfo_rooty()
+    x0 = tkwindow.canvas.winfo_rootx() # + tkwindow.canvas.winfo_x()
+    y0 = tkwindow.canvas.winfo_rooty() # + tkwindow.canvas.winfo_y()
     x1 = x0 + tkwindow.canvas.winfo_width()
     y1 = y0 + tkwindow.canvas.winfo_height()
-    maps_storage.append(ImageGrab.grab(bbox=(x0,y0,x1,y1)))
-
-    # Code to move the drone can go here
-    # Move a small amount by changing tx,ty
-    # TODO
-    # RIGHT NOW It moves diagonally ...
-    # tx = 1
-    # ty = 1
+    window_scc = ImageGrab.grab(bbox=(x0,y0,x1,y1))
+    window_scc.save("temp.png")
+    maps_storage.append(window_scc)
     
     # coverage algoirthm #1 random Brownian motion which is the baseline
     if brownian:
@@ -267,19 +262,21 @@ def draw_objects(brownian=True):
         # TODO at each position, go to the nearest unexplored tile...
         # TODO do DFS
         if tiles_occ[curr_tileX][curr_tileY]:
+            # TODO if the last tile is the same as the current one, pop current one and take the one before
             stack.pop()
         else:
             # TODO for each tile check if its in bounds, if it is add it to stack
-            if 0:
+            if 0 <= curr_tileX + 1  <= tilesX and 0 <= curr_tileY <= tilesY:
                 stack.append(curr_tileX + 1, curr_tileY)
+            if 0 <= curr_tileX - 1  <= tilesX and 0 <= curr_tileY <= tilesY:
                 stack.append(curr_tileX - 1, curr_tileY)
+            if 0 <= curr_tileX  <= tilesX and 0 <= curr_tileY + 1 <= tilesY:
                 stack.append(curr_tileX, curr_tileY + 1)
+            if 0 <= curr_tileX  <= tilesX and 0 <= curr_tileY - 1 <= tilesY:
                 stack.append(curr_tileX, curr_tileY - 1)
 
-        # TODO if the last tile is the same as the current one, pop current one and take the one before
-
-        next_tileX, next_tileY = stack[0]
-        # TODO pop from stack
+        # take top of stack
+        next_tileX, next_tileY = stack[-1]
 
         # compute distance to get to the middle of target tile
         tx = ((next_tileX + 0.5) * (myImageSize/tilesX)) - oldp[0]
@@ -311,17 +308,17 @@ def draw_objects(brownian=True):
     num_tiles_visited += 0 if prev_tileX == curr_tileX and curr_tileY == prev_tileY else 1
 
 
-    if total_distance > 50000:
-        # write down all the stats and exit
+    # if total_distance > 100: # 50000:
+    #     # write down all the stats and exit
 
-        # generate gifs
-        name_suffix = "brownian" if brownian else "custom"
-        imageio.mimsave(f"movie_{name_suffix}.gif", maps_storage)
+    #     # generate gifs
+    #     name_suffix = "brownian" if brownian else "custom"
+    #     imageio.mimsave(f"movie_{name_suffix}.gif", maps_storage)
+    #     os.makedirs("logs", exist_ok=True)
+    #     with open(f"logs/{name_suffix}_{datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}","w") as f:
+    #         f.write(f"total_distance: {total_distance}\ntile ratio: {tiles_occ.sum()/num_tiles_visited}\nnumber of total tiles visited: {num_tiles_visited}\nnum unique tiles: {tiles_occ.sum()}\nterrain distribution: {terrain_distribution}\n")
 
-        with open(f"logs_{name_suffix}_{datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}","w") as f:
-            f.write(f"total_distance: {total_distance}\ttile ratio: {tiles_occ.sum()/num_tiles_visited}\tnumber of total tiles: {num_tiles_visited}\tnum unique tiles: {tiles_occ.sum()}\tterrain distribution: {terrain_distribution}\n")
-
-        exit(0)
+    #     exit(0)
 
 def tile_coords(pos):
     """ Given a position in (pixelX, pixelY), return tile coordinates (tileX, tileY) """
