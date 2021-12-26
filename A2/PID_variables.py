@@ -1,0 +1,9 @@
+Kp = 6000
+Ki = 500
+Kd = 2000 # 1500
+bias = 0.0
+integral_windup = 2000 / Ki
+kf_Kp = 6500
+kf_Ki = 500
+kf_Kd = 1500
+kf_bias = 0.0

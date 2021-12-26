@@ -1,0 +1,5 @@
+total_distance: 111.91214990087931
+tile ratio: 0.75
+number of total tiles visited: 4
+num unique tiles: 3.0
+terrain distribution: {'urban': 0, 'water': 3, 'arable': 0}
