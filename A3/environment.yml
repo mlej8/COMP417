@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 name: comp417
 channels:
   - defaults
@@ -63,3 +64,18 @@ dependencies:
     - pyscreenshot==3.0
     - sklearn==0.0
     - threadpoolctl==3.0.0
+=======
+name: asst3
+
+channels: 
+        - conda-forge
+
+dependencies:
+        - python=3.7.0
+        - pip
+        - matplotlib
+        - Pillow
+        - scikit-learn
+        - scipy=1.2.0
+
+>>>>>>> 33d82a4b2d8895df81a38c38ac6a4b32806c87f9

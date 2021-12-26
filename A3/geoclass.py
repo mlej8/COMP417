@@ -10,7 +10,10 @@
 
 import sys
 import os
+<<<<<<< HEAD
 import argparse
+=======
+>>>>>>> 33d82a4b2d8895df81a38c38ac6a4b32806c87f9
 from time import time
 import logging
 import matplotlib.pyplot as plt
@@ -32,17 +35,24 @@ import loader
 ###############################################################################
 # Compute a PCA (eigenfaces) on the face dataset (treated as unlabeled
 # dataset): unsupervised feature extraction / dimensionality reduction
+<<<<<<< HEAD
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--num_components", default=20, type=int)
 args = parser.parse_args()
 n_components = args.num_components
 print("number of components ", n_components)
+=======
+n_components = 20
+>>>>>>> 33d82a4b2d8895df81a38c38ac6a4b32806c87f9
 # Use color images
 color=1
 # enable extra debugging?
 debug = 0
+<<<<<<< HEAD
 #
+=======
+>>>>>>> 33d82a4b2d8895df81a38c38ac6a4b32806c87f9
 # Sadly, the image size is embedded here
 IMAGE_SIDE=256
 
@@ -283,7 +293,11 @@ def classifyFile(pca, clf, filePath, target_names=[""]*10):
     im = imageio.imread(filePath)
     im = np.asarray(im, dtype=np.float32)
     im = np.ravel( im )
+<<<<<<< HEAD
     return classifyOne(pca, clf, im,  target_names)
+=======
+    return classifyOne(pca, clf, im,  classnames)
+>>>>>>> 33d82a4b2d8895df81a38c38ac6a4b32806c87f9
 
 
 import pickle
